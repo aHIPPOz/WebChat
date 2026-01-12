@@ -46,7 +46,7 @@
 
   <!-- boucle principale : importe les modules et démarre l'app -->
   <script type="module">
-    import { UI } from './src/ui.js';
+    import { UIManager, UI } from './src/ui.js';
     import { Persistence } from './src/persistence.js';
     import { SandboxRunner } from './src/sandbox.js';
     import { ModelManager } from './src/model.js';
@@ -54,69 +54,90 @@
 
     // état global minimal (pratique pour debug)
     window.__AGENT_APP = {
-      UI, Persistence, SandboxRunner, ModelManager, Agent
+      UIManager, Persistence, SandboxRunner, ModelManager, Agent
     };
 
     async function main() {
-      // init modules
-      SandboxRunner.init();                // iframe + listeners
-      await ModelManager.populateModelSelect(); // fill model list
-      Persistence.load();                  // load history & agent state
-      UI.setModelText("Aucun modèle chargé");
+  // état global
+  window.__AGENT_APP = window.__AGENT_APP || {};
 
-      // wire controls
-      document.getElementById('loadBtn').onclick = async () => {
-        const chosen = document.getElementById('modelSelect').value;
-        try {
-          await ModelManager.loadModel(chosen, (p) => {
-            UI.setModelText(`Chargement ${Math.round((p.progress||0)*100)}%`);
-          });
-          // sync agent state to iframe after load
-          SandboxRunner.syncStateToIframe();
-        } catch (e) {
-          UI.setModelText("Erreur chargement");
-          UI.appendSimpleAssistant('Erreur: ' + String(e));
-        }
-      };
+  // === SANDBOX as static singleton ===
+  // Use SandboxRunner as provided (static methods / properties)
+  window.__AGENT_APP.SANDBOX = SandboxRunner;
+  // initialize static sandbox (creates this.iframe internally)
+  SandboxRunner.init(); // synchronous in your code; onload handler will sync state when ready
 
-      document.getElementById('clearHistory').onclick = () => {
-        if (confirm("Effacer tout l'historique local ?")) {
-          Persistence.clearHistory();
-          UI.clearMessages();
-        }
-      };
+  // === UI instance ===
+  window.__AGENT_APP.UI = new UIManager();
 
-      document.getElementById('resetAgent').onclick = () => {
-        if (confirm("Remettre l'agent à l'état initial (supprime fonctions persistantes) ?")) {
-          Persistence.resetAgentState();
-          SandboxRunner.syncStateToIframe();
-          UI.appendSimpleAssistant("Agent réinitialisé.");
-        }
-      };
+  // === AGENT instance ===
+  window.__AGENT_APP.AGENT = Agent; // Agent has static methods in your code, you can also keep it as class
 
-      // send handling
-      const sendBtn = document.getElementById('sendBtn');
-      const userInput = document.getElementById('userInput');
-      sendBtn.onclick = async () => {
-        const t = userInput.value.trim();
-        if (!t) return;
-        userInput.value = "";
-        await Agent.sendUserMessage(t);
-      };
-      userInput.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter' && !e.shiftKey) {
-          e.preventDefault(); sendBtn.click();
-        }
+  // Fill model select
+  await ModelManager.populateModelSelect();
+
+  // Now safe to load persistence (UI + Sandbox exist)
+  Persistence.load();
+
+  // Set UI state
+  UI.setModelText("Aucun modèle chargé");
+  UI.setModelText("Interface prête.");
+  UI.appendSimpleAssistant("Interface prête.");
+
+  // wiring (identique)
+  document.getElementById('loadBtn').onclick = async () => {
+    const chosen = document.getElementById('modelSelect').value;
+    try {
+      await ModelManager.loadModel(chosen, (p) => {
+        UI.setModelText(`Chargement ${Math.round((p.progress||0)*100)}%`);
       });
-
-      // autoRun toggle wiring
-      document.getElementById('autoRunToggle').addEventListener('change', (ev) => {
-        Agent.setAutoRun(ev.target.checked);
-      });
-
-      // done
-      UI.appendSimpleAssistant("Interface prête.");
+      // sync agent state to iframe after load (safe because SandboxRunner.init set onload)
+      SandboxRunner.syncStateToIframe();
+    } catch (e) {
+      UI.setModelText("Erreur chargement");
+      UI.appendSimpleAssistant('Erreur: ' + String(e));
     }
+  };
+
+  document.getElementById('clearHistory').onclick = () => {
+    if (confirm("Effacer tout l'historique local ?")) {
+      Persistence.clearHistory();
+      UI.clearMessages();
+    }
+  };
+
+  document.getElementById('resetAgent').onclick = () => {
+    if (confirm("Remettre l'agent à l'état initial ?")) {
+      Persistence.resetAgentState();
+      SandboxRunner.syncStateToIframe();
+      UI.appendSimpleAssistant("Agent réinitialisé.");
+    }
+  };
+
+  const sendBtn = document.getElementById('sendBtn');
+  const userInput = document.getElementById('userInput');
+
+  sendBtn.onclick = async () => {
+    const t = userInput.value.trim();
+    if (!t) return;
+    userInput.value = "";
+    await Agent.sendUserMessage(t);
+  };
+
+  userInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      sendBtn.click();
+    }
+  });
+
+  document.getElementById('autoRunToggle').onchange = (ev) => {
+    Agent.setAutoRun(ev.target.checked);
+  };
+
+  // 8 — démarrage ok
+  UI.appendSimpleAssistant("Interface prête.");
+}
 
     main().catch(err => {
       console.error("Erreur init app:", err);
