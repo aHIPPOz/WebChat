@@ -1,0 +1,51 @@
+/* ====== Glass UI (compact & charismatique) ====== */
+:root{
+  --bg1:#071023; --bg2:#0b1220; --glass: rgba(255,255,255,0.06);
+  --accent: #4a8cff; --muted: rgba(255,255,255,0.12);
+}
+*{box-sizing:border-box}
+body{
+  margin:0; height:100vh; display:flex; font-family:Inter,ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial;
+  background: linear-gradient(135deg,var(--bg1),var(--bg2)); color:#e8eef8;
+}
+#sidebar{
+  width:300px; padding:18px; border-right:1px solid rgba(255,255,255,0.04);
+  background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+  backdrop-filter: blur(10px);
+}
+h1{margin:0 0 6px 0; font-size:18px; letter-spacing:0.2px}
+.muted{color:rgba(230,240,255,0.6); font-size:13px}
+#currentModel{margin-top:12px; padding:8px 10px; background:var(--glass); border-radius:10px; font-weight:600}
+#controls{margin-top:14px; display:flex; gap:8px; flex-direction:column}
+select,input,button{font-size:14px}
+select,input{padding:10px; border-radius:10px; border:1px solid rgba(255,255,255,0.04); background:transparent; color:inherit}
+button{padding:10px;border-radius:10px;border:none;cursor:pointer;background:linear-gradient(180deg,var(--accent),#2b6fd4); color:white}
+.smallbtn{background:transparent;border:1px solid var(--muted); color:inherit;padding:8px;border-radius:8px}
+
+/* Main area */
+#main{flex:1; display:flex; flex-direction:column; gap:8px; padding:18px}
+#messages{flex:1; overflow:auto; display:flex; flex-direction:column; gap:12px; padding-right:6px}
+.bubble{max-width:78%; padding:12px 14px; border-radius:12px; white-space:pre-wrap; line-height:1.45}
+.user{align-self:flex-end; background:linear-gradient(180deg, rgba(74,140,255,0.18), rgba(74,140,255,0.12)); color:#eaf3ff}
+.assistant{align-self:flex-start; background:rgba(255,255,255,0.04); color:#eaf3ff}
+.meta{font-size:12px;color:rgba(255,255,255,0.6); margin-bottom:6px}
+.controls-row{display:flex; gap:8px; align-items:center}
+#inputBar{display:flex; gap:8px; margin-top:6px}
+#userInput{flex:1;padding:12px;border-radius:10px;border:1px solid rgba(255,255,255,0.04); background:transparent;color:inherit}
+#sendBtn{min-width:120px}
+
+/* Thinking fold */
+.thinking-line{cursor:pointer; display:inline-block; color:var(--accent); text-decoration:underline; font-weight:600}
+.thinking-box{margin-top:8px; padding:12px; border-radius:10px; background:rgba(255,255,255,0.02); font-family:monospace; font-size:13px}
+
+/* Code preview */
+pre.codeBlock{background:rgba(0,0,0,0.45); padding:12px; border-radius:8px; overflow:auto; font-size:13px; color:#dfefff; border:1px solid rgba(255,255,255,0.04)}
+.codeActions{display:flex; gap:8px; margin-top:8px}
+
+/* Execution sandbox area (hidden iframe) */
+#sandboxFrame{width:0;height:0;border:0; position:absolute; left:-9999px; top:-9999px}
+
+/* small UI niceties */
+details{margin-top:10px}
+.badge{display:inline-block;padding:6px 8px;border-radius:8px;background:rgba(255,255,255,0.03);font-size:12px}
+footer{padding:8px;text-align:center;color:rgba(255,255,255,0.45); font-size:12px}

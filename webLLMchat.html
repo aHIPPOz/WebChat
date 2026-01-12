@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>WebLLM Glass Agent — modular</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <aside id="sidebar">
+    <h1>WebLLM Glass Agent</h1>
+    <div class="muted">Mode Agent — thinking & sandbox (hybride)</div>
+
+    <div id="currentModel" aria-live="polite">Modèle : aucun</div>
+
+    <div id="controls">
+      <label class="muted">Modèle WebLLM</label>
+      <select id="modelSelect"></select>
+      <button id="loadBtn">Charger modèle</button>
+      <div style="display:flex; gap:8px;">
+        <button id="clearHistory" class="smallbtn">Effacer historique</button>
+        <button id="resetAgent" class="smallbtn">Reset agent</button>
+      </div>
+
+      <details style="margin-top:12px">
+        <summary>Agent tools (persistents)</summary>
+        <div id="toolsList" style="margin-top:8px"></div>
+      </details>
+
+      <div style="margin-top:12px; display:flex; gap:8px; align-items:center;">
+        <input id="autoRunToggle" type="checkbox" /> <label for="autoRunToggle" class="muted">Auto-run (danger)</label>
+      </div>
+    </div>
+  </aside>
+
+  <main id="main">
+    <div id="messages"></div>
+
+    <div id="inputBar">
+      <input id="userInput" placeholder="Écris ton message..." />
+      <button id="sendBtn">Envoyer</button>
+    </div>
+
+    <footer>Chaque lot de JS généré est montré avant exécution — tu dois autoriser.</footer>
+  </main>
+
+  <!-- boucle principale : importe les modules et démarre l'app -->
+  <script type="module">
+    import { UI } from './src/ui.js';
+    import { Persistence } from './src/persistence.js';
+    import { SandboxRunner } from './src/sandbox.js';
+    import { ModelManager } from './src/model.js';
+    import { Agent } from './src/agent.js';
+
+    // état global minimal (pratique pour debug)
+    window.__AGENT_APP = {
+      UI, Persistence, SandboxRunner, ModelManager, Agent
+    };
+
+    async function main() {
+      // init modules
+      SandboxRunner.init();                // iframe + listeners
+      await ModelManager.populateModelSelect(); // fill model list
+      Persistence.load();                  // load history & agent state
+      UI.setModelText("Aucun modèle chargé");
+
+      // wire controls
+      document.getElementById('loadBtn').onclick = async () => {
+        const chosen = document.getElementById('modelSelect').value;
+        try {
+          await ModelManager.loadModel(chosen, (p) => {
+            UI.setModelText(`Chargement ${Math.round((p.progress||0)*100)}%`);
+          });
+          // sync agent state to iframe after load
+          SandboxRunner.syncStateToIframe();
+        } catch (e) {
+          UI.setModelText("Erreur chargement");
+          UI.appendSimpleAssistant('Erreur: ' + String(e));
+        }
+      };
+
+      document.getElementById('clearHistory').onclick = () => {
+        if (confirm("Effacer tout l'historique local ?")) {
+          Persistence.clearHistory();
+          UI.clearMessages();
+        }
+      };
+
+      document.getElementById('resetAgent').onclick = () => {
+        if (confirm("Remettre l'agent à l'état initial (supprime fonctions persistantes) ?")) {
+          Persistence.resetAgentState();
+          SandboxRunner.syncStateToIframe();
+          UI.appendSimpleAssistant("Agent réinitialisé.");
+        }
+      };
+
+      // send handling
+      const sendBtn = document.getElementById('sendBtn');
+      const userInput = document.getElementById('userInput');
+      sendBtn.onclick = async () => {
+        const t = userInput.value.trim();
+        if (!t) return;
+        userInput.value = "";
+        await Agent.sendUserMessage(t);
+      };
+      userInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+          e.preventDefault(); sendBtn.click();
+        }
+      });
+
+      // autoRun toggle wiring
+      document.getElementById('autoRunToggle').addEventListener('change', (ev) => {
+        Agent.setAutoRun(ev.target.checked);
+      });
+
+      // done
+      UI.appendSimpleAssistant("Interface prête.");
+    }
+
+    main().catch(err => {
+      console.error("Erreur init app:", err);
+      UI.appendSimpleAssistant("Erreur init: " + String(err));
+    });
+  </script>
+</body>
+</html>
